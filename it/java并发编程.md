@@ -12,10 +12,19 @@
 ## 1.1 线性安全的代码＝》对访问状态的进行管理＝》对共享的可变状态的管理
 
 * 无状态的对象是线性安全的，如一般的servlet
-
 * 共享状态是不可变的是线性安全的，如枚举类型、常亮
-
 * 对共享可变状态的访问是受保护的，如原子操作或者加锁
+* 对象的状态：一般存储于实例的状态变量（基本类型或者引用类型)或者类的静态变量中。
+* 共享：状态变量可由多个线程访问
+* 可变：在对象的生命周期中，对象的状态是可变的。
+* 要保持状态的一致性，需要在一个原子事务中改变所有的可变状态
+
+先验条件、后验条件、不变性条件：
+
+1. Pre-conditions are the things that must be true before a method is called. The method tells clients "this is what I expect from you".
+2. Post-conditions are the things that must be true after the method is complete. The method tells clients "this is what I promise to do for you".
+3. Invariants are the things that are always true and won't change. The method tells clients "if this was true before you called me, I promise it'll still be true when I'm done".
+
 
 ## 1.2 线性安全定义：多线程访问对象时，无论线程的执行顺序如何，类都能执行正确的行为。如下计数器。
 
@@ -87,6 +96,119 @@ public class UnsafeCounter implements Servlet{
 ```
 
 * 加锁：延迟加载的check－then－act操作加锁
+
+```java
+public class UnsafeCounter implements Servlet{
+  private Long count = new Long(0);
+  public long getCount(){
+    return count;
+  }
+  
+  public void service(ServletRequest req,ServletResponse resp){
+    BigInteger i = extractFromRequest(req)
+      //use lock to avoid race condition 
+    syncronized(this){
+        ++count;
+    }
+      //count.incrementAndGet();
+    encodeIntoResponse(resp,i);
+  }
+}
+```
+
+# 2. 内置锁Synchronized
+
+* synchronized 标记方法体，内置锁为对象。
+* 静态方法用的class类作为锁对象。
+* 多个共享可变的状态需要由同一个锁来控制访问。
+
+# 3.简单性与性能评估--鱼与熊掌
+
+ * 不要为了性能简单的牺牲简单性（安全性）
+ * 大计算时长较长或者IO读取很慢时，不要枷锁
+ * 幂操作 
+
+# 4. 可见性
+
+多线程操作时，读操作读取值不一定能够适时看到写操作的值。
+
+```java
+
+/**
+ * Created by jacky on 2018/5/4.
+ */
+public class NoVisibility {
+    private static boolean ready;
+    private static int number;
+
+    public static class ReaderThread extends Thread{
+        @Override
+        public void run(){
+            while (!ready){
+                Thread.yield();
+            }
+            System.out.print(number);
+        }
+    }
+    public static void main(String args[]){
+        new ReaderThread().start();
+        number=42;
+        ready=true;
+    }
+}
+```
+
+失效数据：获取的并非是最新的数据，如上例子。程序可能无法结束；可能等于0；可能等于42
+
+非原子的64位操作：非volatile 修饰的long和double
+
+## 4.1 volatile变量可见性
+
+​	java内存模型规定了所有的变量都存储在主内存中。每条线程中还有自己的工作内存，线程的工作内存中保存了被该线程所使用到的变量（这些变量是从主内存中拷贝而来）。线程对变量的所有操作（读取，赋值）都必须在工作内存中进行。不同线程之间也无法直接访问对方工作内存中的变量，线程间变量值的传递均需要通过主内存来完成。
+
+![volatile原理](http://upload-images.jianshu.io/upload_images/3985563-8a3d9a1b94b97e83.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+典型用法，作为是否退出循环的标识。
+
+```java
+boolean flag;
+.......
+    public void run(){
+    while(flage){
+        .........
+    }
+}
+```
+
+volatile只能保证可见性，无法保证事务原子性；枷锁均可保证
+
+volatile使用原则，当满足下列所有条件时可用：
+
+* 对变量的写操作不依赖当前值，或者单线程操作
+* 该变量不会与其它变量一起纳入到不变性当中（类似事务一致性）
+* 访问变量时不需要枷锁
+
+## 4.2 对象发布与溢出
+
+对象发布：使对象能够在当前作用域之外使用，典型的发布为静态变量值
+
+对象溢出：不该发布的对象被发布。典型为某个发布对象的引用变量。（深度拷贝与浅度拷贝）
+
+##　4.3线性安全
+
+线程封闭：将可变变量封装在单一线程中，典型应用数据库连接池等。
+
+栈封闭：线程的局部变量存于栈中，对象存于局部变量中
+
+jvm内存分配模型
+
+![](https://images2015.cnblogs.com/blog/652544/201605/652544-20160511133545843-1824443220.png)
+
+ThreadLocal类每个线程缓存一份本地变量，不共享，Thread关闭时本地变量对象回收。
+
+## 4.1大数据副本一致性
+
+
 
 **10.154.0.0－10.154.255.255**  10.155.0.0－10.155.225.255
 
