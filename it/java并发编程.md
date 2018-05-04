@@ -194,6 +194,13 @@ volatile使用原则，当满足下列所有条件时可用：
 
 对象溢出：不该发布的对象被发布。典型为某个发布对象的引用变量。（深度拷贝与浅度拷贝）
 
+安全发布可变对象常用模式：
+
+* 静态初始化模块
+* 对象应用赋值给final域（属性）
+* 对象应用赋值给volatile 域
+* 枷锁的域
+
 ##　4.3线性安全
 
 线程封闭：将可变变量封装在单一线程中，典型应用数据库连接池等。
@@ -205,6 +212,42 @@ jvm内存分配模型
 ![](https://images2015.cnblogs.com/blog/652544/201605/652544-20160511133545843-1824443220.png)
 
 ThreadLocal类每个线程缓存一份本地变量，不共享，Thread关闭时本地变量对象回收。
+
+不可变对象满足条件：
+
+* 对象状态在对象创建后不可修改
+* 对象所有域（属性）都是final类型（常量通常采用大写形式）
+* 对象是正确创建的（对象没有this溢出)
+
+java线性安全的容器
+
+同步容器类：使用了synchronized
+1.Vector
+2.HashTable
+
+并发容器：
+3.ConcurrentHashMap:分段
+4.CopyOnWriteArrayList：写时复制
+5.CopyOnWriteArraySet：写时复制
+
+Queue:
+6.ConcurrentLinkedQueue：是使用非阻塞的方式实现的基于链接节点的无界的线程安全队列，性能非常好。
+（java.util.concurrent.BlockingQueue 接口代表了线程安全的队列。）
+7.ArrayBlockingQueue：基于数组的有界阻塞队列
+8.LinkedBlockingQueue：基于链表的有界阻塞队列。
+9.PriorityBlockingQueue：支持优先级的无界阻塞队列，即该阻塞队列中的元素可自动排序。默认情况下，元素采取自然升序排列
+10.DelayQueue：一种延时获取元素的无界阻塞队列。
+11.SynchronousQueue：不存储元素的阻塞队列。每个put操作必须等待一个take操作，否则不能继续添加元素。内部其实没有任何一个元素，容量是0
+
+Deque:
+(Deque接口定义了双向队列。双向队列允许在队列头和尾部进行入队出队操作。)
+12.ArrayDeque:基于数组的双向非阻塞队列。
+13.LinkedBlockingDeque:基于链表的双向阻塞队列。
+
+Sorted容器：
+14.ConcurrentSkipListMap：是TreeMap的线程安全版本
+15.ConcurrentSkipListSet：是TreeSet的线程安全版本
+
 
 ## 4.1大数据副本一致性
 
